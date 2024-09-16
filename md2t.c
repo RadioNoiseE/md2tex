@@ -110,7 +110,8 @@ static void render_open_code_block(MD_TEX *r, const MD_BLOCK_CODE_DETAIL *det) {
   RENDER_VERBATIM(r, "\\begin{lstlisting}");
   if (det->lang.text != NULL) {
     // should only have substr_types[0] = MD_TEXT_NORMAL with offset 0
-    // ~ MD_CHAR *lang = malloc((strlen(det->lang.text) + 12) * sizeof(MD_CHAR));
+    // ~ MD_CHAR *lang = malloc((strlen(det->lang.text) + 12) *
+    // sizeof(MD_CHAR));
     RENDER_VERBATIM(r, "[language=");
     render_attribute(r, &det->lang);
     RENDER_VERBATIM(r, "]\n");
@@ -385,7 +386,7 @@ int md_tex(const MD_CHAR *input, MD_SIZE input_size,
                    .userdata = userdata,
                    .flags = renderer_flags,
                    .table_col_level = 0,
-		   .table_col_count = -1,
+                   .table_col_count = -1,
                    .list_item_level = 0,
                    .verbatim_type = 0,
                    .escape_map = {0}};
