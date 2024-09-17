@@ -1,7 +1,22 @@
-CFLAGS:=-O2 -Wno-macro-redefined
+OBJS   := $(patsubst %c,%o,$(wildcard *.c))
+DEPS   := $(patsubst %c,%d,$(wildcard *.c))
+TARGET := md2tex
+CFLAGS += -Wno-macro-redefined -O2
 
-build: md2t.c md4c.c md4c.h
-	cc md2t.c md4c.c -o md2tex $(CFLAGS)
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^
 
-clean: md2tex
-	rm md2tex
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+%.d: %.c
+	@set -e; rm -f $@; \
+	$(CC) -MM $(CFLAGS) $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+.PHONY: clean
+clean:
+	-rm $(OBJS) $(DEPS) $(TARGET)
+
+-include $(DEPS)
