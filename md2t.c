@@ -17,8 +17,6 @@ struct MD_TEX_tag {
   char escape_map[256];
 };
 
-// keep this a macro, then most compiler should be smart enough to replace
-// -> the strlen() call with a compile-time constant if the string is a C literal
 #define RENDER_VERBATIM(r, verbatim)                                           \
   render_verbatim((r), (verbatim), (MD_SIZE)(strlen(verbatim)))
 static inline void render_verbatim(MD_TEX *r, const MD_CHAR *text,
@@ -32,7 +30,6 @@ static inline void render_verbatim(MD_TEX *r, const MD_CHAR *text,
 static void render_tex_escaped(MD_TEX *r, const MD_CHAR *data, MD_SIZE size) {
   MD_OFFSET beg = 0;
   MD_OFFSET off = 0;
-  // loop unrolling
   while (1) {
     while (off + 3 < size && !NEED_TEX_ESC(data[off + 0]) &&
            !NEED_TEX_ESC(data[off + 1]) && !NEED_TEX_ESC(data[off + 2]) &&
@@ -120,7 +117,6 @@ static void render_open_table_block(MD_TEX *r,
   RENDER_VERBATIM(r, "\\begin{tabular}{");
   int cn = det->col_count;
   r->table_col_count = cn;
-  // always align to left
   while (cn-- != 0)
     RENDER_VERBATIM(r, "|l");
   RENDER_VERBATIM(r, "|}\n");
@@ -466,7 +462,6 @@ static int process_file(FILE *in, FILE *out) {
       break;
     buf_in.size += n;
   }
-  // add some more reserve to deal with metadata
   membuf_init(&buf_out, (MD_SIZE)(buf_in.size + buf_in.size / 8 + 64));
   t0 = clock();
   ret = md_tex(buf_in.data, (MD_SIZE)buf_in.size, process_output,
@@ -492,6 +487,8 @@ out:
 }
 
 int main(int argc, char **argv) {
+  if (argc != 3)
+    return 0;
   FILE *in = fopen(*++argv, "rb");
   FILE *out = fopen(*++argv, "wt");
   parser_flags |= MD_FLAG_TABLES;
