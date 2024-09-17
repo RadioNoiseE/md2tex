@@ -1,10 +1,10 @@
+#define MD4C_USE_UTF8
 #include "md4c.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-// context information as userdata
 typedef struct MD_TEX_tag MD_TEX;
 struct MD_TEX_tag {
   void (*process_output)(const MD_CHAR *, MD_SIZE, void *);
@@ -18,7 +18,7 @@ struct MD_TEX_tag {
 };
 
 // keep this a macro, then most compiler should be smart enough to replace
-// ~ the strlen() call with a compile-time constant if the string is a C literal
+// -> the strlen() call with a compile-time constant if the string is a C literal
 #define RENDER_VERBATIM(r, verbatim)                                           \
   render_verbatim((r), (verbatim), (MD_SIZE)(strlen(verbatim)))
 static inline void render_verbatim(MD_TEX *r, const MD_CHAR *text,
@@ -26,7 +26,6 @@ static inline void render_verbatim(MD_TEX *r, const MD_CHAR *text,
   r->process_output(text, size, r->userdata);
 }
 
-// some characters need to be escaped in TeX manuscript
 #define NEED_TEX_ESC_FLAG 0x1
 #define NEED_TEX_ESC(ch)                                                       \
   (r->escape_map[(unsigned char)(ch)] & NEED_TEX_ESC_FLAG)
@@ -90,7 +89,7 @@ static void render_attribute(MD_TEX *r, const MD_ATTRIBUTE *attr) {
     MD_OFFSET off = attr->substr_offsets[i];
     MD_SIZE size = attr->substr_offsets[i + 1] - off;
     const MD_CHAR *text = attr->text + off;
-    if (r->verbatim_type == 3)
+    if (r->verbatim_type == 4)
       render_verbatim(r, text, size);
     else
       switch (type) {
@@ -107,14 +106,11 @@ static void render_attribute(MD_TEX *r, const MD_ATTRIBUTE *attr) {
 }
 
 static void render_open_code_block(MD_TEX *r, const MD_BLOCK_CODE_DETAIL *det) {
-  RENDER_VERBATIM(r, "\\begin{lstlisting}");
+  RENDER_VERBATIM(r, "\\begin{verbatim}");
   if (det->lang.text != NULL) {
-    // should only have substr_types[0] = MD_TEXT_NORMAL with offset 0
-    // ~ MD_CHAR *lang = malloc((strlen(det->lang.text) + 12) *
-    // sizeof(MD_CHAR));
     RENDER_VERBATIM(r, "[language=");
     render_attribute(r, &det->lang);
-    RENDER_VERBATIM(r, "]\n");
+    RENDER_VERBATIM(r, "]");
   }
   RENDER_VERBATIM(r, "\n");
 }
@@ -133,7 +129,7 @@ static void render_open_table_block(MD_TEX *r,
 
 static void render_open_href_span(MD_TEX *r, const MD_SPAN_A_DETAIL *det) {
   RENDER_VERBATIM(r, "\\href{");
-  r->verbatim_type = 3;
+  r->verbatim_type = 4;
   render_attribute(r, &det->href);
   r->verbatim_type = 0;
   RENDER_VERBATIM(r, "}{");
@@ -147,7 +143,7 @@ static void render_open_href_span(MD_TEX *r, const MD_SPAN_A_DETAIL *det) {
 static void render_open_img_span(MD_TEX *r, const MD_SPAN_IMG_DETAIL *det) {
   RENDER_VERBATIM(r, "\\begin{figure}[H]\n");
   RENDER_VERBATIM(r, "\\image{");
-  render_attribute(r, &det->title);
+  render_attribute(r, &det->src);
   RENDER_VERBATIM(r, "}\n");
 }
 
@@ -184,7 +180,7 @@ static int enter_block_callback(MD_BLOCKTYPE type, void *detail,
     RENDER_VERBATIM(r, "\\item ");
     break;
   case MD_BLOCK_HR:
-    RENDER_VERBATIM(r, "\\thematicbreak\n");
+    RENDER_VERBATIM(r, "\\thematic\n");
     break;
   case MD_BLOCK_H:
     RENDER_VERBATIM(r, head[((MD_BLOCK_H_DETAIL *)detail)->level - 1]);
@@ -201,10 +197,8 @@ static int enter_block_callback(MD_BLOCKTYPE type, void *detail,
     render_open_table_block(r, (const MD_BLOCK_TABLE_DETAIL *)detail);
     break;
   case MD_BLOCK_THEAD:
-    r->table_col_level = 0;
     break;
   case MD_BLOCK_TBODY:
-    r->table_col_level = 0;
     break;
   case MD_BLOCK_TR:
     break;
@@ -243,11 +237,10 @@ static int leave_block_callback(MD_BLOCKTYPE type, void *detail,
   case MD_BLOCK_HR:
     break;
   case MD_BLOCK_H:
-    RENDER_VERBATIM(r, "}");
-    RENDER_VERBATIM(r, "\n");
+    RENDER_VERBATIM(r, "}\n");
     break;
   case MD_BLOCK_CODE:
-    RENDER_VERBATIM(r, "\\end{lstlisting}");
+    RENDER_VERBATIM(r, "\\end{verbatim}\n");
     r->verbatim_type = 0;
     break;
   case MD_BLOCK_HTML:
@@ -288,7 +281,7 @@ static int enter_span_calback(MD_SPANTYPE type, void *detail, void *userdata) {
     RENDER_VERBATIM(r, "\\textbf{");
     break;
   case MD_SPAN_U:
-    RENDER_VERBATIM(r, "\\uline{");
+    RENDER_VERBATIM(r, "\\underline{");
     break;
   case MD_SPAN_A:
     render_open_href_span(r, (MD_SPAN_A_DETAIL *)detail);
@@ -305,9 +298,11 @@ static int enter_span_calback(MD_SPANTYPE type, void *detail, void *userdata) {
     break;
   case MD_SPAN_LATEXMATH:
     RENDER_VERBATIM(r, "$");
+    r->verbatim_type = 3;
     break;
   case MD_SPAN_LATEXMATH_DISPLAY:
     RENDER_VERBATIM(r, "$$");
+    r->verbatim_type = 3;
     break;
   case MD_SPAN_WIKILINK:
     break;
@@ -341,9 +336,11 @@ static int leave_span_calback(MD_SPANTYPE type, void *detail, void *userdata) {
     break;
   case MD_SPAN_LATEXMATH:
     RENDER_VERBATIM(r, "$");
+    r->verbatim_type = 0;
     break;
   case MD_SPAN_LATEXMATH_DISPLAY:
     RENDER_VERBATIM(r, "$$");
+    r->verbatim_type = 0;
     break;
   case MD_SPAN_WIKILINK:
     break;
@@ -399,7 +396,6 @@ int md_tex(const MD_CHAR *input, MD_SIZE input_size,
                       .text = text_callback,
                       .debug_log = NULL,
                       .syntax = NULL};
-  // build map of char which needs escaping in TeX
   for (int i = 0; i < 256; i++) {
     unsigned char ch = (unsigned char)i;
     if (strchr("~^#$%&{}_\\", ch) != NULL)
