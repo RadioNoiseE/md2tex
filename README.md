@@ -1,8 +1,12 @@
-# MarkDown To (La|plain)TeX
+# Markdown To (La)TeX
 
 A blazing fast, lenient parser based on MD4C.
 
-You should be familiar with TeX as the generated output does not work ourside the box.
+You should be familiar with TeX as the generated output does not work out of the box.
+
+Refer to [this project that utilizes it to convert Markdown to LaTeX then to PDF](https://github.com/Computerization/c13n/tree/main/typeset).
+
+This repository is archived as all further maintenance will happen [here](https://github.com/Computerization/c13n).
 
 ## Build
 
